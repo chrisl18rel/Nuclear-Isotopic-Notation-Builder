@@ -137,7 +137,7 @@
       <p>Type a reaction in plain text — renders instantly as isotope notation</p>
     </div>
   </div>
-  <div class="app-version">v2.4</div>
+  <div class="app-version">v2.5</div>
 </header>
 
 <div class="app-body">
@@ -341,45 +341,72 @@ function tokenize(raw){
   const words = s.trim().split(/\s+/).filter(Boolean);
   const tokens = [];
 
-  for(const word of words){
+  for(let i = 0; i < words.length; i++){
+    const word = words[i];
     if(word === 'ARROW'){ tokens.push({type:'arrow'}); continue; }
     if(word === 'PLUS') { tokens.push({type:'plus'});  continue; }
 
     const wl = word.toLowerCase();
 
-    // unknown keyword
-    if(['unknown','?','unk','??','unknown_particle'].includes(wl)){
-      tokens.push({type:'unknown'}); continue;
-    }
-
-    // special particle
-    const particle = PARTICLES.find(p => p.keywords.includes(wl));
-    if(particle){
-      tokens.push({ type:'isotope', sym:particle.sym, A:particle.A, Z:particle.Z, charge:null, label:particle.label });
+    // Pure integer — treat as coefficient for the next word
+    if(/^\d+$/.test(word)){
+      const coeff = parseInt(word);
+      const next  = words[i + 1];
+      if(next && next !== 'ARROW' && next !== 'PLUS'){
+        i++; // consume the next word
+        const parsed = parseWord(next);
+        if(parsed){
+          for(let c = 0; c < coeff; c++){
+            if(c > 0) tokens.push({type:'plus'});
+            tokens.push(parsed);
+          }
+          continue;
+        }
+        // next word didn't parse — push the number as unknown and let loop re-handle next
+        i--;
+      }
+      tokens.push({ type:'unknown_token', raw:word });
       continue;
     }
 
-    // Name-Mass(charge)  e.g. Ca-40(+2)
-    let m = word.match(/^([a-zA-Z]+)-(\d+)\(([+-]\d+)\)$/);
-    if(m){
-      const el = findEl(m[1]);
-      if(el){ tokens.push({ type:'isotope', sym:el.sym, A:parseInt(m[2]), Z:el.Z, charge:parseInt(m[3]), label:null }); continue; }
-    }
-
-    // Name-Mass  e.g. Radon-226  Rn-226
-    m = word.match(/^([a-zA-Z]+)-(\d+)$/);
-    if(m){
-      const el = findEl(m[1]);
-      if(el){ tokens.push({ type:'isotope', sym:el.sym, A:parseInt(m[2]), Z:el.Z, charge:null, label:null }); continue; }
-    }
-
-    // Element name or symbol alone
-    const el = findEl(word);
-    if(el){ tokens.push({ type:'isotope', sym:el.sym, A:el.A, Z:el.Z, charge:null, label:null }); continue; }
-
+    const parsed = parseWord(word);
+    if(parsed){ tokens.push(parsed); continue; }
     tokens.push({ type:'unknown_token', raw:word });
   }
+
   return tokens;
+}
+
+// Parse a single word into a token object, or return null
+function parseWord(word){
+  const wl = word.toLowerCase();
+
+  if(['unknown','?','unk','??','unknown_particle'].includes(wl))
+    return {type:'unknown'};
+
+  const particle = PARTICLES.find(p => p.keywords.includes(wl));
+  if(particle)
+    return { type:'isotope', sym:particle.sym, A:particle.A, Z:particle.Z, charge:null, label:particle.label };
+
+  // Name-Mass(charge)
+  let m = word.match(/^([a-zA-Z]+)-(\d+)\(([+-]\d+)\)$/);
+  if(m){
+    const el = findEl(m[1]);
+    if(el) return { type:'isotope', sym:el.sym, A:parseInt(m[2]), Z:el.Z, charge:parseInt(m[3]), label:null };
+  }
+
+  // Name-Mass
+  m = word.match(/^([a-zA-Z]+)-(\d+)$/);
+  if(m){
+    const el = findEl(m[1]);
+    if(el) return { type:'isotope', sym:el.sym, A:parseInt(m[2]), Z:el.Z, charge:null, label:null };
+  }
+
+  // Element name or symbol alone
+  const el = findEl(word);
+  if(el) return { type:'isotope', sym:el.sym, A:el.A, Z:el.Z, charge:null, label:null };
+
+  return null;
 }
 
 function findEl(s){
