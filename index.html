@@ -78,6 +78,15 @@
     .toggle-label input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; }
     .toggle-row { margin-bottom: 4px; }
 
+    .style-btn {
+      flex: 1; font-size: 11px; font-weight: 600; padding: 6px 4px;
+      background: var(--bg); border: 1px solid var(--border2); border-radius: 4px;
+      color: var(--text-dim); cursor: pointer; transition: all 0.1s;
+      font-family: 'Segoe UI', 'Arial Unicode MS', sans-serif;
+    }
+    .style-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .style-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
     /* Token chips */
     .token-preview { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; min-height: 22px; }
     .token-chip { font-size: 10px; padding: 2px 7px; border-radius: 10px; border: 1px solid var(--border2); background: var(--bg); color: var(--text-dim); }
@@ -137,7 +146,7 @@
       <p>Type a reaction in plain text — renders instantly as isotope notation</p>
     </div>
   </div>
-  <div class="app-version">v2.6</div>
+  <div class="app-version">v2.7</div>
 </header>
 
 <div class="app-body">
@@ -170,6 +179,13 @@
       <div class="toggle-row">
         <label class="toggle-label"><input type="checkbox" id="opt-transparent" /> Transparent background</label>
       </div>
+      <div class="display-divider"></div>
+      <label style="margin-top:0;">Electron / Beta Display Style</label>
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <button class="style-btn active" id="btn-isotope" onclick="IN.setElectronStyle('isotope')">⁰₋₁e  Isotope</button>
+        <button class="style-btn" id="btn-symbol" onclick="IN.setElectronStyle('symbol')">e⁻  Symbol</button>
+      </div>
+      <div class="mini-note" style="margin-top:4px;">Affects beta, electron, and positron display.</div>
       <label>Font Size</label>
       <div class="slider-input-row">
         <input type="range" id="font-range" min="14" max="60" value="32" />
@@ -288,13 +304,13 @@ const ELEMENTS = [
 // SPECIAL PARTICLES
 // ─────────────────────────────────────────────────────────
 const PARTICLES = [
-  { keywords:["alpha","α"],             sym:"He", A:4, Z:2,  label:"α",  unicode:"⁴₂He" },
-  { keywords:["beta","β-","beta-","β"], sym:"e",  A:0, Z:-1, label:"β⁻", unicode:"⁰₋₁e" },
-  { keywords:["positron","β+","beta+"], sym:"e",  A:0, Z:1,  label:"β⁺", unicode:"⁰₊₁e" },
-  { keywords:["gamma","γ"],             sym:"γ",  A:0, Z:0,  label:"γ",  unicode:"⁰₀γ"  },
-  { keywords:["neutron"],               sym:"n",  A:1, Z:0,  label:"n",  unicode:"¹₀n"  },
-  { keywords:["proton"],                sym:"H",  A:1, Z:1,  label:"p",  unicode:"¹₁H"  },
-  { keywords:["electron","e-"],         sym:"e",  A:0, Z:-1, label:"e⁻", unicode:"⁰₋₁e" },
+  { keywords:["alpha","α"],                                    sym:"He", A:4, Z:2,  label:"α",  unicode:"⁴₂He", isElectron:false },
+  { keywords:["beta","β-","beta-","β"],                        sym:"e",  A:0, Z:-1, label:"β⁻", unicode:"⁰₋₁e", isElectron:true  },
+  { keywords:["positron","β+","beta+"],                        sym:"e",  A:0, Z:1,  label:"β⁺", unicode:"⁰₊₁e", isElectron:false },
+  { keywords:["gamma","γ"],                                    sym:"γ",  A:0, Z:0,  label:"γ",  unicode:"⁰₀γ",  isElectron:false },
+  { keywords:["neutron"],                                      sym:"n",  A:1, Z:0,  label:"n",  unicode:"¹₀n",  isElectron:false },
+  { keywords:["proton"],                                       sym:"H",  A:1, Z:1,  label:"p",  unicode:"¹₁H",  isElectron:false },
+  { keywords:["electron","e-","e","2e","2e-","electrons"],     sym:"e",  A:0, Z:-1, label:"e⁻", unicode:"⁰₋₁e", isElectron:true  },
 ];
 
 // ─────────────────────────────────────────────────────────
@@ -305,14 +321,20 @@ const SUB_MAP   = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','
 function toSup(val){ return String(val).split('').map(c=>SUPER_MAP[c]||c).join(''); }
 function toSub(val){ return String(val).split('').map(c=>SUB_MAP[c]||c).join(''); }
 
-function isoUnicode(t){
+function isoUnicode(t, electronStyle){
   if(t.isUnknown) return '[?]';
-  const supA = toSup(t.A ?? '');
-  const subZ = toSub(t.Z ?? '');
-  let str = `${supA}${subZ}${t.sym}`;
-  if(t.charge != null){
-    str += toSup(t.charge > 0 ? `+${t.charge}` : String(t.charge));
+  let str;
+  if(t.isElectron && electronStyle === 'symbol'){
+    str = t.Z < 0 ? 'e⁻' : 'e⁺';
+  } else {
+    const supA = toSup(t.A ?? '');
+    const subZ = toSub(t.Z ?? '');
+    str = `${supA}${subZ}${t.sym}`;
+    if(t.charge != null){
+      str += toSup(t.charge > 0 ? `+${t.charge}` : String(t.charge));
+    }
   }
+  if(t.coeff && t.coeff > 1) str = String(t.coeff) + str;
   return str;
 }
 
@@ -356,10 +378,8 @@ function tokenize(raw){
         i++; // consume the next word
         const parsed = parseWord(next);
         if(parsed){
-          for(let c = 0; c < coeff; c++){
-            if(c > 0) tokens.push({type:'plus'});
-            tokens.push(parsed);
-          }
+          parsed.coeff = coeff;
+          tokens.push(parsed);
           continue;
         }
         // next word didn't parse — push the number as unknown and let loop re-handle next
@@ -414,13 +434,13 @@ function findEl(s){
   return ELEMENTS.find(e => e.name.toLowerCase()===sl || e.sym.toLowerCase()===sl) || null;
 }
 
-function tokensToUnicode(tokens){
+function tokensToUnicode(tokens, electronStyle){
   return tokens.map(t=>{
     if(t.type==='arrow')         return ' → ';
     if(t.type==='plus')          return ' + ';
     if(t.type==='unknown')       return '[?]';
     if(t.type==='unknown_token') return t.raw;
-    return isoUnicode(t);
+    return isoUnicode(t, electronStyle);
   }).join('').trim();
 }
 
@@ -431,6 +451,15 @@ const IN = (() => {
   const canvas = document.getElementById('notation-canvas');
   const ctx    = canvas.getContext('2d');
   let lastTokens = [];
+  let electronStyle = 'isotope'; // 'isotope' | 'symbol'
+
+  function setElectronStyle(style){
+    electronStyle = style;
+    document.getElementById('btn-isotope').classList.toggle('active', style === 'isotope');
+    document.getElementById('btn-symbol').classList.toggle('active', style === 'symbol');
+    updateUnicodeBox(lastTokens);
+    draw(lastTokens);
+  }
 
   // ── REFERENCE TABLE ──
   function buildRefTable(){
@@ -485,13 +514,13 @@ const IN = (() => {
   function updateUnicodeBox(tokens){
     const el = document.getElementById('unicode-result');
     if(!tokens.length){ el.textContent='Type a reaction above to generate the Unicode text.'; el.className='copy-result-box empty'; return; }
-    el.textContent = tokensToUnicode(tokens);
+    el.textContent = tokensToUnicode(tokens, electronStyle);
     el.className   = 'copy-result-box';
   }
 
   function copyUnicode(){
     if(!lastTokens.length){ showAlert('Nothing to copy.'); return; }
-    navigator.clipboard.writeText(tokensToUnicode(lastTokens))
+    navigator.clipboard.writeText(tokensToUnicode(lastTokens, electronStyle))
       .then(()=>showAlert('Unicode text copied!'))
       .catch(()=>showAlert('Copy failed — try selecting and copying the text manually.'));
   }
@@ -499,10 +528,11 @@ const IN = (() => {
   // ── CANVAS DRAWING ──
   function getOpts(){
     return {
-      fontSize:    parseInt(document.getElementById('font-num').value)||32,
-      bgColor:     document.getElementById('bg-color').value,
-      textColor:   document.getElementById('text-color').value,
-      transparent: document.getElementById('opt-transparent').checked,
+      fontSize:      parseInt(document.getElementById('font-num').value)||32,
+      bgColor:       document.getElementById('bg-color').value,
+      textColor:     document.getElementById('text-color').value,
+      transparent:   document.getElementById('opt-transparent').checked,
+      electronStyle: electronStyle,
     };
   }
 
@@ -547,19 +577,30 @@ const IN = (() => {
     });
   }
 
-  // ── MEASURE ──
   function measureToken(t, fs, subFs){
     if(t.type === 'plus'){
       ctx.font = `${fs}px 'Segoe UI',sans-serif`;
       return ctx.measureText('+').width + fs * 0.4;
     }
-    if(t.type === 'arrow'){
-      return fs * 2.2;
-    }
+    if(t.type === 'arrow') return fs * 2.2;
     if(t.type === 'unknown' || t.type === 'unknown_token'){
-      // Two small stacked boxes + one tall symbol box
       const lw = Math.max(1.5, fs * 0.045);
       return fs * 0.75 + lw * 2 + fs * 1.1 + lw;
+    }
+    // coefficient prefix width
+    let coeffW = 0;
+    if(t.coeff && t.coeff > 1){
+      ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
+      coeffW = ctx.measureText(String(t.coeff)).width + fs * 0.1;
+    }
+    // electron symbol style
+    const opts = getOpts();
+    if(t.isElectron && opts.electronStyle === 'symbol'){
+      ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
+      const eW = ctx.measureText('e').width;
+      ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
+      const supW = ctx.measureText('⁻').width;
+      return coeffW + eW + supW + 2;
     }
     // isotope
     ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
@@ -574,7 +615,7 @@ const IN = (() => {
       ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
       chargeW = ctx.measureText(cs).width + 2;
     }
-    return prefixW + symW + 4 + chargeW;
+    return coeffW + prefixW + symW + 4 + chargeW;
   }
 
   // ── DRAW — returns width used ──
@@ -607,6 +648,33 @@ const IN = (() => {
   }
 
   function drawIsotope(t, x, cy, fs, subFs, opts){
+    // ── Coefficient prefix ──
+    let coeffW = 0;
+    if(t.coeff && t.coeff > 1){
+      ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
+      ctx.fillStyle = opts.textColor; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const coeffStr = String(t.coeff);
+      coeffW = ctx.measureText(coeffStr).width + fs * 0.1;
+      ctx.fillText(coeffStr, x, cy + fs * 0.2);
+    }
+    const ox = x + coeffW; // offset x past the coefficient
+
+    // ── Electron symbol style (e⁻ / e⁺) ──
+    if(t.isElectron && opts.electronStyle === 'symbol'){
+      const symStr  = t.Z < 0 ? 'e' : 'e';
+      const supStr  = t.Z < 0 ? '⁻' : '⁺';
+      ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
+      const eW = ctx.measureText(symStr).width;
+      ctx.fillStyle = opts.textColor; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(symStr, ox, cy + fs * 0.2);
+      ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(supStr, ox + eW + 1, cy - fs * 0.08);
+      ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
+      const totalW = coeffW + eW + ctx.measureText(supStr).width + 2;
+      return totalW;
+    }
+
     const sym     = t.sym;
     const massStr = String(t.A ?? '');
     const numStr  = String(t.Z ?? '');
@@ -615,7 +683,6 @@ const IN = (() => {
     ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
     const massW   = ctx.measureText(massStr).width;
     const numW    = ctx.measureText(numStr).width;
-    // Right-align both numbers to the same x edge
     const prefixW = Math.max(massW, numW) + 4;
 
     ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
@@ -625,33 +692,31 @@ const IN = (() => {
     ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
     const chargeW = chargeStr ? ctx.measureText(chargeStr).width + 2 : 0;
 
-    const totalW = prefixW + symW + 4 + chargeW;
+    const totalW = coeffW + prefixW + symW + 4 + chargeW;
 
-    // ── Mass number — top-left, right-aligned to prefixW edge ──
+    // Mass number — top, right-aligned to prefixW edge
     ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
     ctx.fillStyle = opts.textColor;
     ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
-    ctx.fillText(massStr, x + prefixW, cy - fs * 0.08);
+    ctx.fillText(massStr, ox + prefixW, cy - fs * 0.08);
 
-    // ── Atomic number — bottom-left, right-aligned to same prefixW edge ──
+    // Atomic number — bottom, right-aligned to same prefixW edge
     ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
-    ctx.fillText(numStr, x + prefixW, cy + fs * 0.56);
+    ctx.fillText(numStr, ox + prefixW, cy + fs * 0.56);
 
-    // ── Symbol — centered on the full vertical span of both numbers ──
-    // Mass top ≈ cy - fs*0.08 - subFs*0.8, atomic number bottom ≈ cy + fs*0.56
-    // Midpoint of that span:
+    // Symbol — centered on full vertical span
     const spanTop    = cy - fs * 0.08 - subFs * 0.8;
     const spanBottom = cy + fs * 0.56;
     const symCY      = (spanTop + spanBottom) / 2;
     ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(sym, x + prefixW + 2, symCY);
+    ctx.fillText(sym, ox + prefixW + 2, symCY);
 
-    // ── Charge — top-right of symbol, at mass number height ──
+    // Charge — top-right of symbol
     if(chargeStr){
       ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
       ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-      ctx.fillText(chargeStr, x + prefixW + symW + 4, cy - fs * 0.08);
+      ctx.fillText(chargeStr, ox + prefixW + symW + 4, cy - fs * 0.08);
     }
 
     return totalW;
@@ -719,7 +784,7 @@ const IN = (() => {
     draw([]);
   }
 
-  return { init, copyUnicode, exportPNG, clearAll };
+  return { init, copyUnicode, exportPNG, clearAll, setElectronStyle };
 })();
 
 function showAlert(msg){
