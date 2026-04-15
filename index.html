@@ -57,6 +57,8 @@
     .action-btn:hover { background: var(--border2); }
     .action-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
     .action-btn.primary:hover { background: #357abd; }
+    .action-btn.danger { color: var(--red); border-color: var(--red); }
+    .action-btn.danger:hover { background: rgba(239,83,80,0.1); }
 
     .export-btn {
       width: 100%; background: var(--accent); color: #fff;
@@ -105,6 +107,15 @@
     .preview-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
     .preview-label { padding: 8px 14px; font-size: 11px; color: var(--text-dim); background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
     .canvas-scroll-wrapper { flex: 1; overflow: auto; padding: 24px; display: flex; align-items: center; justify-content: center; }
+    .canvas-scroll-wrapper.transparent-bg {
+      background-image: linear-gradient(45deg, #aaa 25%, transparent 25%),
+                        linear-gradient(-45deg, #aaa 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #aaa 75%),
+                        linear-gradient(-45deg, transparent 75%, #aaa 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+      background-color: #ffffff;
+    }
     #notation-canvas { display: block; border-radius: 4px; box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
 
     .styled-alert {
@@ -126,7 +137,7 @@
       <p>Type a reaction in plain text — renders instantly as isotope notation</p>
     </div>
   </div>
-  <div class="app-version">v2.0</div>
+  <div class="app-version">v2.1</div>
 </header>
 
 <div class="app-body">
@@ -142,6 +153,7 @@
         Separate particles with <b>+</b>. Type <b>unknown</b> for a boxed unknown particle.
       </div>
       <div class="token-preview" id="token-preview"></div>
+      <button class="action-btn danger" onclick="IN.clearAll()" style="margin-top:8px;">✕ Clear</button>
     </div>
 
     <!-- UNICODE OUTPUT -->
@@ -149,7 +161,7 @@
       <div class="group-title">UNICODE TEXT OUTPUT</div>
       <div class="mini-note" style="margin-bottom:6px;">Paste into Word, Google Docs, or any editor.</div>
       <div class="copy-result-box empty" id="unicode-result">Type a reaction above to generate the Unicode text.</div>
-      <button class="action-btn primary" onclick="IN.copyUnicode()">⎘ Copy Unicode Text</button>
+      <button class="action-btn primary" onclick="IN.copyUnicode()">⎘ Copy Text</button>
     </div>
 
     <!-- DISPLAY OPTIONS -->
@@ -186,7 +198,7 @@
       <div class="display-divider"></div>
       <div class="mini-note">
         <b>Elements:</b> Name-Mass (<i>Carbon-14</i>) or Symbol-Mass (<i>C-14</i>).<br>
-        <b>Ions:</b> add charge in parens — <i>Ca-40(+2)</i>.
+        <b>Ions:</b> add charge in parenthesis — <i>Ca-40(+2)</i>.
       </div>
     </div>
 
@@ -646,16 +658,31 @@ const IN = (() => {
     document.getElementById('font-num').onchange   = function(){ document.getElementById('font-range').value=this.value; draw(lastTokens); };
     document.getElementById('bg-color').onchange   = ()=>draw(lastTokens);
     document.getElementById('text-color').onchange = ()=>draw(lastTokens);
-    document.getElementById('opt-transparent').onchange = ()=>draw(lastTokens);
+    document.getElementById('opt-transparent').onchange = ()=>{
+      const wrapper = document.querySelector('.canvas-scroll-wrapper');
+      wrapper.classList.toggle('transparent-bg', document.getElementById('opt-transparent').checked);
+      draw(lastTokens);
+    };
+  }
+
+  function clearAll(){
+    document.getElementById('rxn-input').value = '';
+    lastTokens = [];
+    document.getElementById('token-preview').innerHTML = '';
+    document.getElementById('unicode-result').textContent = 'Type a reaction above to generate the Unicode text.';
+    document.getElementById('unicode-result').className = 'copy-result-box empty';
+    draw([]);
   }
 
   function init(){
     buildRefTable();
     bindControls();
+    // Always start blank — ignore any browser-restored textarea value
+    document.getElementById('rxn-input').value = '';
     draw([]);
   }
 
-  return { init, copyUnicode, exportPNG };
+  return { init, copyUnicode, exportPNG, clearAll };
 })();
 
 function showAlert(msg){
