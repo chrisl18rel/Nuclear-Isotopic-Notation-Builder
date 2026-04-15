@@ -1,0 +1,670 @@
+<!-- isotope-notation.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Isotope Notation Generator</title>
+  <style>
+    :root {
+      --bg: #1a1a2e; --surface: #16213e; --surface2: #0f3460;
+      --accent: #4a90e2; --accent2: #e94560;
+      --text: #e0e0e0; --text-dim: #8a8a9a;
+      --border: #2a2a4a; --border2: #3a3a5a;
+      --green: #4caf50; --yellow: #ffc107; --red: #ef5350; --radius: 6px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; min-height: 100vh; }
+
+    .app-header { background: var(--surface); border-bottom: 2px solid var(--accent); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .app-logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { font-size: 28px; }
+    .logo-text h1 { font-size: 18px; font-weight: 700; color: var(--text); }
+    .logo-text p { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+    .app-version { font-size: 11px; color: var(--text-dim); background: var(--border); padding: 3px 8px; border-radius: 10px; }
+
+    .app-body { display: flex; height: calc(100vh - 65px); overflow: hidden; }
+
+    /* SIDEBAR */
+    .controls-panel {
+      width: 308px; min-width: 308px; background: var(--surface); border-right: 1px solid var(--border);
+      overflow-y: scroll; padding: 12px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .controls-panel::-webkit-scrollbar { width: 6px; }
+    .controls-panel::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 3px; }
+    .controls-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    .controls-panel::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    .control-group { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 10px 12px; }
+    .group-title { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; }
+    label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 3px; margin-top: 6px; }
+    label:first-of-type { margin-top: 0; }
+    input[type="number"], input[type="text"], select, textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border2);
+      border-radius: 4px; color: var(--text); font-size: 12px; padding: 5px 8px; outline: none;
+    }
+    textarea { resize: vertical; min-height: 68px; font-family: inherit; line-height: 1.6; }
+    input[type="number"]:focus, input[type="text"]:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    select option { background: var(--bg); }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .action-btn {
+      width: 100%; background: var(--surface2); color: var(--text);
+      border: 1px solid var(--border2); border-radius: var(--radius); padding: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 6px; transition: background 0.15s;
+    }
+    .action-btn:hover { background: var(--border2); }
+    .action-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .action-btn.primary:hover { background: #357abd; }
+
+    .export-btn {
+      width: 100%; background: var(--accent); color: #fff;
+      border: none; border-radius: var(--radius); padding: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 6px; transition: background 0.15s;
+    }
+    .export-btn:hover { background: #357abd; }
+
+    .display-divider { height: 1px; background: var(--border); margin: 8px 0; }
+    .mini-note { font-size: 10px; color: var(--text-dim); margin-top: 4px; line-height: 1.55; }
+
+    .slider-input-row { display: flex; align-items: center; gap: 6px; }
+    .slider-input-row input[type="range"] { flex: 1; accent-color: var(--accent); min-width: 0; }
+    .slider-input-row input[type="number"] { width: 54px; min-width: 54px; flex-shrink: 0; }
+
+    .toggle-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); cursor: pointer; }
+    .toggle-label input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; }
+    .toggle-row { margin-bottom: 4px; }
+
+    /* Token chips */
+    .token-preview { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; min-height: 22px; }
+    .token-chip { font-size: 10px; padding: 2px 7px; border-radius: 10px; border: 1px solid var(--border2); background: var(--bg); color: var(--text-dim); }
+    .token-chip.ok   { border-color: var(--green);  color: var(--green); }
+    .token-chip.warn { border-color: var(--yellow); color: var(--yellow); }
+    .token-chip.op   { border-color: var(--accent); color: var(--accent); }
+
+    /* Unicode output */
+    .copy-result-box {
+      background: var(--bg); border: 1px solid var(--border2); border-radius: 4px;
+      padding: 8px 10px; font-size: 13px; color: var(--text); word-break: break-all;
+      min-height: 36px; line-height: 1.8; letter-spacing: 0.2px;
+      font-family: 'Segoe UI', 'DejaVu Sans', 'Arial Unicode MS', sans-serif;
+    }
+    .copy-result-box.empty { color: var(--text-dim); font-size: 11px; font-family: inherit; }
+
+    /* Reference table */
+    .ref-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 4px; }
+    .ref-table th { color: var(--accent); text-align: left; padding: 3px 4px; border-bottom: 1px solid var(--border2); font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase; }
+    .ref-table td { padding: 3px 4px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+    .ref-table tr:last-child td { border-bottom: none; }
+    .ref-table td:first-child { color: var(--text); font-weight: 600; font-family: monospace; }
+    .ref-table tbody tr { cursor: pointer; }
+    .ref-table tbody tr:hover td { background: rgba(74,144,226,0.08); }
+
+    /* PREVIEW PANEL */
+    .preview-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+    .preview-label { padding: 8px 14px; font-size: 11px; color: var(--text-dim); background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .canvas-scroll-wrapper { flex: 1; overflow: auto; padding: 24px; display: flex; align-items: center; justify-content: center; }
+    #notation-canvas { display: block; border-radius: 4px; box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
+
+    .styled-alert {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--surface2); border: 1px solid var(--accent); color: var(--text);
+      border-radius: var(--radius); padding: 10px 20px; font-size: 13px; z-index: 9999;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4); animation: fadeInDown 0.2s ease; pointer-events: none;
+    }
+    @keyframes fadeInDown { from{opacity:0;transform:translateX(-50%) translateY(-10px);}to{opacity:1;transform:translateX(-50%) translateY(0);} }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-logo">
+    <div class="logo-icon">⚛️</div>
+    <div class="logo-text">
+      <h1>Isotope Notation Generator</h1>
+      <p>Type a reaction in plain text — renders instantly as isotope notation</p>
+    </div>
+  </div>
+  <div class="app-version">v2.0</div>
+</header>
+
+<div class="app-body">
+  <aside class="controls-panel">
+
+    <!-- REACTION INPUT -->
+    <div class="control-group">
+      <div class="group-title">REACTION INPUT</div>
+      <label>Type your reaction in plain text</label>
+      <textarea id="rxn-input" placeholder="e.g.  Radon-226 -> Radium-222 + alpha&#10;e.g.  U-238 -> Th-234 + alpha&#10;e.g.  C-14 -> N-14 + beta + unknown"></textarea>
+      <div class="mini-note">
+        Use <b>→</b> or <b>-&gt;</b> or <b>yields</b> as the arrow.<br>
+        Separate particles with <b>+</b>. Type <b>unknown</b> for a boxed unknown particle.
+      </div>
+      <div class="token-preview" id="token-preview"></div>
+    </div>
+
+    <!-- UNICODE OUTPUT -->
+    <div class="control-group">
+      <div class="group-title">UNICODE TEXT OUTPUT</div>
+      <div class="mini-note" style="margin-bottom:6px;">Paste into Word, Google Docs, or any editor.</div>
+      <div class="copy-result-box empty" id="unicode-result">Type a reaction above to generate the Unicode text.</div>
+      <button class="action-btn primary" onclick="IN.copyUnicode()">⎘ Copy Unicode Text</button>
+    </div>
+
+    <!-- DISPLAY OPTIONS -->
+    <div class="control-group">
+      <div class="group-title">DISPLAY OPTIONS</div>
+      <div class="toggle-row">
+        <label class="toggle-label"><input type="checkbox" id="opt-transparent" /> Transparent background</label>
+      </div>
+      <label>Font Size</label>
+      <div class="slider-input-row">
+        <input type="range" id="font-range" min="14" max="60" value="32" />
+        <input type="number" id="font-num" value="32" min="14" max="60" step="1" />
+      </div>
+      <div class="two-col" style="margin-top:6px;">
+        <div>
+          <label>Background</label>
+          <input type="color" id="bg-color" value="#ffffff" style="width:100%;height:28px;border:1px solid var(--border2);border-radius:4px;background:var(--bg);cursor:pointer;padding:2px;" />
+        </div>
+        <div>
+          <label>Text Color</label>
+          <input type="color" id="text-color" value="#111111" style="width:100%;height:28px;border:1px solid var(--border2);border-radius:4px;background:var(--bg);cursor:pointer;padding:2px;" />
+        </div>
+      </div>
+    </div>
+
+    <!-- PARTICLE REFERENCE -->
+    <div class="control-group">
+      <div class="group-title">PARTICLE REFERENCE</div>
+      <div class="mini-note" style="margin-bottom:6px;">Click any row to append it to the reaction.</div>
+      <table class="ref-table" id="ref-table">
+        <thead><tr><th>Type this</th><th>Particle</th><th>Notation</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="display-divider"></div>
+      <div class="mini-note">
+        <b>Elements:</b> Name-Mass (<i>Carbon-14</i>) or Symbol-Mass (<i>C-14</i>).<br>
+        <b>Ions:</b> add charge in parens — <i>Ca-40(+2)</i>.
+      </div>
+    </div>
+
+    <!-- EXPORT -->
+    <div class="control-group">
+      <div class="group-title">EXPORT</div>
+      <button class="export-btn" onclick="IN.exportPNG()">⬇ Export PNG</button>
+    </div>
+
+  </aside>
+
+  <div class="preview-panel">
+    <div class="preview-label">Live Preview — updates as you type</div>
+    <div class="canvas-scroll-wrapper">
+      <canvas id="notation-canvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+// ELEMENT DATABASE
+// ─────────────────────────────────────────────────────────
+const ELEMENTS = [
+  {name:"Hydrogen",    sym:"H",  Z:1,  A:1},   {name:"Helium",      sym:"He", Z:2,  A:4},
+  {name:"Lithium",     sym:"Li", Z:3,  A:7},   {name:"Beryllium",   sym:"Be", Z:4,  A:9},
+  {name:"Boron",       sym:"B",  Z:5,  A:11},  {name:"Carbon",      sym:"C",  Z:6,  A:12},
+  {name:"Nitrogen",    sym:"N",  Z:7,  A:14},  {name:"Oxygen",      sym:"O",  Z:8,  A:16},
+  {name:"Fluorine",    sym:"F",  Z:9,  A:19},  {name:"Neon",        sym:"Ne", Z:10, A:20},
+  {name:"Sodium",      sym:"Na", Z:11, A:23},  {name:"Magnesium",   sym:"Mg", Z:12, A:24},
+  {name:"Aluminum",    sym:"Al", Z:13, A:27},  {name:"Silicon",     sym:"Si", Z:14, A:28},
+  {name:"Phosphorus",  sym:"P",  Z:15, A:31},  {name:"Sulfur",      sym:"S",  Z:16, A:32},
+  {name:"Chlorine",    sym:"Cl", Z:17, A:35},  {name:"Argon",       sym:"Ar", Z:18, A:40},
+  {name:"Potassium",   sym:"K",  Z:19, A:39},  {name:"Calcium",     sym:"Ca", Z:20, A:40},
+  {name:"Scandium",    sym:"Sc", Z:21, A:45},  {name:"Titanium",    sym:"Ti", Z:22, A:48},
+  {name:"Vanadium",    sym:"V",  Z:23, A:51},  {name:"Chromium",    sym:"Cr", Z:24, A:52},
+  {name:"Manganese",   sym:"Mn", Z:25, A:55},  {name:"Iron",        sym:"Fe", Z:26, A:56},
+  {name:"Cobalt",      sym:"Co", Z:27, A:59},  {name:"Nickel",      sym:"Ni", Z:28, A:58},
+  {name:"Copper",      sym:"Cu", Z:29, A:64},  {name:"Zinc",        sym:"Zn", Z:30, A:65},
+  {name:"Gallium",     sym:"Ga", Z:31, A:70},  {name:"Germanium",   sym:"Ge", Z:32, A:73},
+  {name:"Arsenic",     sym:"As", Z:33, A:75},  {name:"Selenium",    sym:"Se", Z:34, A:79},
+  {name:"Bromine",     sym:"Br", Z:35, A:80},  {name:"Krypton",     sym:"Kr", Z:36, A:84},
+  {name:"Rubidium",    sym:"Rb", Z:37, A:85},  {name:"Strontium",   sym:"Sr", Z:38, A:88},
+  {name:"Yttrium",     sym:"Y",  Z:39, A:89},  {name:"Zirconium",   sym:"Zr", Z:40, A:91},
+  {name:"Niobium",     sym:"Nb", Z:41, A:93},  {name:"Molybdenum",  sym:"Mo", Z:42, A:96},
+  {name:"Technetium",  sym:"Tc", Z:43, A:98},  {name:"Ruthenium",   sym:"Ru", Z:44, A:101},
+  {name:"Rhodium",     sym:"Rh", Z:45, A:103}, {name:"Palladium",   sym:"Pd", Z:46, A:106},
+  {name:"Silver",      sym:"Ag", Z:47, A:108}, {name:"Cadmium",     sym:"Cd", Z:48, A:112},
+  {name:"Indium",      sym:"In", Z:49, A:115}, {name:"Tin",         sym:"Sn", Z:50, A:119},
+  {name:"Antimony",    sym:"Sb", Z:51, A:122}, {name:"Tellurium",   sym:"Te", Z:52, A:128},
+  {name:"Iodine",      sym:"I",  Z:53, A:127}, {name:"Xenon",       sym:"Xe", Z:54, A:131},
+  {name:"Cesium",      sym:"Cs", Z:55, A:133}, {name:"Barium",      sym:"Ba", Z:56, A:137},
+  {name:"Lanthanum",   sym:"La", Z:57, A:139}, {name:"Cerium",      sym:"Ce", Z:58, A:140},
+  {name:"Praseodymium",sym:"Pr", Z:59, A:141}, {name:"Neodymium",   sym:"Nd", Z:60, A:144},
+  {name:"Promethium",  sym:"Pm", Z:61, A:145}, {name:"Samarium",    sym:"Sm", Z:62, A:150},
+  {name:"Europium",    sym:"Eu", Z:63, A:152}, {name:"Gadolinium",  sym:"Gd", Z:64, A:157},
+  {name:"Terbium",     sym:"Tb", Z:65, A:159}, {name:"Dysprosium",  sym:"Dy", Z:66, A:163},
+  {name:"Holmium",     sym:"Ho", Z:67, A:165}, {name:"Erbium",      sym:"Er", Z:68, A:167},
+  {name:"Thulium",     sym:"Tm", Z:69, A:169}, {name:"Ytterbium",   sym:"Yb", Z:70, A:173},
+  {name:"Lutetium",    sym:"Lu", Z:71, A:175}, {name:"Hafnium",     sym:"Hf", Z:72, A:178},
+  {name:"Tantalum",    sym:"Ta", Z:73, A:181}, {name:"Tungsten",    sym:"W",  Z:74, A:184},
+  {name:"Rhenium",     sym:"Re", Z:75, A:186}, {name:"Osmium",      sym:"Os", Z:76, A:190},
+  {name:"Iridium",     sym:"Ir", Z:77, A:192}, {name:"Platinum",    sym:"Pt", Z:78, A:195},
+  {name:"Gold",        sym:"Au", Z:79, A:197}, {name:"Mercury",     sym:"Hg", Z:80, A:201},
+  {name:"Thallium",    sym:"Tl", Z:81, A:204}, {name:"Lead",        sym:"Pb", Z:82, A:207},
+  {name:"Bismuth",     sym:"Bi", Z:83, A:209}, {name:"Polonium",    sym:"Po", Z:84, A:209},
+  {name:"Astatine",    sym:"At", Z:85, A:210}, {name:"Radon",       sym:"Rn", Z:86, A:222},
+  {name:"Francium",    sym:"Fr", Z:87, A:223}, {name:"Radium",      sym:"Ra", Z:88, A:226},
+  {name:"Actinium",    sym:"Ac", Z:89, A:227}, {name:"Thorium",     sym:"Th", Z:90, A:232},
+  {name:"Protactinium",sym:"Pa", Z:91, A:231}, {name:"Uranium",     sym:"U",  Z:92, A:238},
+  {name:"Neptunium",   sym:"Np", Z:93, A:237}, {name:"Plutonium",   sym:"Pu", Z:94, A:244},
+  {name:"Americium",   sym:"Am", Z:95, A:243}, {name:"Curium",      sym:"Cm", Z:96, A:247},
+  {name:"Berkelium",   sym:"Bk", Z:97, A:247}, {name:"Californium", sym:"Cf", Z:98, A:251},
+  {name:"Einsteinium", sym:"Es", Z:99, A:252}, {name:"Fermium",     sym:"Fm", Z:100,A:257},
+  {name:"Mendelevium", sym:"Md", Z:101,A:258}, {name:"Nobelium",    sym:"No", Z:102,A:259},
+  {name:"Lawrencium",  sym:"Lr", Z:103,A:262}, {name:"Rutherfordium",sym:"Rf",Z:104,A:265},
+  {name:"Dubnium",     sym:"Db", Z:105,A:268}, {name:"Seaborgium",  sym:"Sg", Z:106,A:271},
+  {name:"Bohrium",     sym:"Bh", Z:107,A:272}, {name:"Hassium",     sym:"Hs", Z:108,A:270},
+  {name:"Meitnerium",  sym:"Mt", Z:109,A:278}, {name:"Darmstadtium",sym:"Ds", Z:110,A:281},
+  {name:"Roentgenium", sym:"Rg", Z:111,A:282}, {name:"Copernicium", sym:"Cn", Z:112,A:285},
+  {name:"Nihonium",    sym:"Nh", Z:113,A:286}, {name:"Flerovium",   sym:"Fl", Z:114,A:289},
+  {name:"Moscovium",   sym:"Mc", Z:115,A:290}, {name:"Livermorium", sym:"Lv", Z:116,A:293},
+  {name:"Tennessine",  sym:"Ts", Z:117,A:294}, {name:"Oganesson",   sym:"Og", Z:118,A:294}
+];
+
+// ─────────────────────────────────────────────────────────
+// SPECIAL PARTICLES
+// ─────────────────────────────────────────────────────────
+const PARTICLES = [
+  { keywords:["alpha","α"],             sym:"He", A:4, Z:2,  label:"α",  unicode:"⁴₂He" },
+  { keywords:["beta","β-","beta-","β"], sym:"e",  A:0, Z:-1, label:"β⁻", unicode:"⁰₋₁e" },
+  { keywords:["positron","β+","beta+"], sym:"e",  A:0, Z:1,  label:"β⁺", unicode:"⁰₊₁e" },
+  { keywords:["gamma","γ"],             sym:"γ",  A:0, Z:0,  label:"γ",  unicode:"⁰₀γ"  },
+  { keywords:["neutron"],               sym:"n",  A:1, Z:0,  label:"n",  unicode:"¹₀n"  },
+  { keywords:["proton"],                sym:"H",  A:1, Z:1,  label:"p",  unicode:"¹₁H"  },
+  { keywords:["electron","e-"],         sym:"e",  A:0, Z:-1, label:"e⁻", unicode:"⁰₋₁e" },
+];
+
+// ─────────────────────────────────────────────────────────
+// UNICODE HELPERS
+// ─────────────────────────────────────────────────────────
+const SUPER_MAP = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻','+':'⁺'};
+const SUB_MAP   = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','-':'₋','+':'₊'};
+function toSup(val){ return String(val).split('').map(c=>SUPER_MAP[c]||c).join(''); }
+function toSub(val){ return String(val).split('').map(c=>SUB_MAP[c]||c).join(''); }
+
+function isoUnicode(t){
+  if(t.isUnknown) return '[?]';
+  const supA = toSup(t.A ?? '');
+  const subZ = toSub(t.Z ?? '');
+  let str = `${supA}${subZ}${t.sym}`;
+  if(t.charge != null){
+    str += toSup(t.charge > 0 ? `+${t.charge}` : String(t.charge));
+  }
+  return str;
+}
+
+// ─────────────────────────────────────────────────────────
+// TOKENIZER
+// Token types: isotope | unknown | arrow | plus | unknown_token
+// ─────────────────────────────────────────────────────────
+function tokenize(raw){
+  if(!raw || !raw.trim()) return [];
+
+  // Normalize arrow variants before splitting
+  let s = raw
+    .replace(/→|--?>|yields/gi, ' ARROW ')
+    .replace(/\+/g, ' PLUS ');
+
+  const words = s.trim().split(/\s+/).filter(Boolean);
+  const tokens = [];
+
+  for(const word of words){
+    if(word === 'ARROW'){ tokens.push({type:'arrow'}); continue; }
+    if(word === 'PLUS') { tokens.push({type:'plus'});  continue; }
+
+    const wl = word.toLowerCase();
+
+    // unknown keyword
+    if(['unknown','?','unk','??','unknown_particle'].includes(wl)){
+      tokens.push({type:'unknown'}); continue;
+    }
+
+    // special particle
+    const particle = PARTICLES.find(p => p.keywords.includes(wl));
+    if(particle){
+      tokens.push({ type:'isotope', sym:particle.sym, A:particle.A, Z:particle.Z, charge:null, label:particle.label });
+      continue;
+    }
+
+    // Name-Mass(charge)  e.g. Ca-40(+2)
+    let m = word.match(/^([a-zA-Z]+)-(\d+)\(([+-]\d+)\)$/);
+    if(m){
+      const el = findEl(m[1]);
+      if(el){ tokens.push({ type:'isotope', sym:el.sym, A:parseInt(m[2]), Z:el.Z, charge:parseInt(m[3]), label:null }); continue; }
+    }
+
+    // Name-Mass  e.g. Radon-226  Rn-226
+    m = word.match(/^([a-zA-Z]+)-(\d+)$/);
+    if(m){
+      const el = findEl(m[1]);
+      if(el){ tokens.push({ type:'isotope', sym:el.sym, A:parseInt(m[2]), Z:el.Z, charge:null, label:null }); continue; }
+    }
+
+    // Element name or symbol alone
+    const el = findEl(word);
+    if(el){ tokens.push({ type:'isotope', sym:el.sym, A:el.A, Z:el.Z, charge:null, label:null }); continue; }
+
+    tokens.push({ type:'unknown_token', raw:word });
+  }
+  return tokens;
+}
+
+function findEl(s){
+  const sl = s.toLowerCase();
+  return ELEMENTS.find(e => e.name.toLowerCase()===sl || e.sym.toLowerCase()===sl) || null;
+}
+
+function tokensToUnicode(tokens){
+  return tokens.map(t=>{
+    if(t.type==='arrow')         return ' → ';
+    if(t.type==='plus')          return ' + ';
+    if(t.type==='unknown')       return '[?]';
+    if(t.type==='unknown_token') return t.raw;
+    return isoUnicode(t);
+  }).join('').trim();
+}
+
+// ─────────────────────────────────────────────────────────
+// MAIN CONTROLLER
+// ─────────────────────────────────────────────────────────
+const IN = (() => {
+  const canvas = document.getElementById('notation-canvas');
+  const ctx    = canvas.getContext('2d');
+  let lastTokens = [];
+
+  // ── REFERENCE TABLE ──
+  function buildRefTable(){
+    const tbody = document.querySelector('#ref-table tbody');
+    const rows = [
+      ['alpha',    'Alpha particle', '⁴₂He'],
+      ['beta',     'Beta minus',     '⁰₋₁e'],
+      ['positron', 'Beta plus',      '⁰₊₁e'],
+      ['gamma',    'Gamma ray',      '⁰₀γ' ],
+      ['neutron',  'Neutron',        '¹₀n' ],
+      ['proton',   'Proton',         '¹₁H' ],
+      ['unknown',  'Unknown',        '□[?]'],
+    ];
+    rows.forEach(([kw, lbl, notation])=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${kw}</td><td>${lbl}</td><td>${notation}</td>`;
+      tr.addEventListener('click',()=>{
+        const ta = document.getElementById('rxn-input');
+        const v  = ta.value.trimEnd();
+        ta.value = v + (v ? ' + ' : '') + kw;
+        ta.focus();
+        onInput();
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ── INPUT HANDLER ──
+  function onInput(){
+    const raw    = document.getElementById('rxn-input').value;
+    const tokens = tokenize(raw);
+    lastTokens   = tokens;
+    updateTokenChips(tokens);
+    updateUnicodeBox(tokens);
+    draw(tokens);
+  }
+
+  function updateTokenChips(tokens){
+    const wrap = document.getElementById('token-preview');
+    wrap.innerHTML = '';
+    tokens.forEach(t=>{
+      const c = document.createElement('span');
+      if(t.type==='arrow')         { c.className='token-chip op'; c.textContent='→'; }
+      else if(t.type==='plus')     { c.className='token-chip op'; c.textContent='+'; }
+      else if(t.type==='unknown')  { c.className='token-chip ok'; c.textContent='?'; }
+      else if(t.type==='unknown_token'){ c.className='token-chip warn'; c.textContent=`"${t.raw}"?`; }
+      else { c.className='token-chip ok'; c.textContent=`${t.sym}-${t.A}`+(t.charge!=null?`(${t.charge>0?'+':''}${t.charge})`:''); }
+      wrap.appendChild(c);
+    });
+  }
+
+  function updateUnicodeBox(tokens){
+    const el = document.getElementById('unicode-result');
+    if(!tokens.length){ el.textContent='Type a reaction above to generate the Unicode text.'; el.className='copy-result-box empty'; return; }
+    el.textContent = tokensToUnicode(tokens);
+    el.className   = 'copy-result-box';
+  }
+
+  function copyUnicode(){
+    if(!lastTokens.length){ showAlert('Nothing to copy.'); return; }
+    navigator.clipboard.writeText(tokensToUnicode(lastTokens))
+      .then(()=>showAlert('Unicode text copied!'))
+      .catch(()=>showAlert('Copy failed — try selecting and copying the text manually.'));
+  }
+
+  // ── CANVAS DRAWING ──
+  function getOpts(){
+    return {
+      fontSize:    parseInt(document.getElementById('font-num').value)||32,
+      bgColor:     document.getElementById('bg-color').value,
+      textColor:   document.getElementById('text-color').value,
+      transparent: document.getElementById('opt-transparent').checked,
+    };
+  }
+
+  function draw(tokens){
+    const opts = getOpts();
+    const fs   = opts.fontSize;
+    const subFs = Math.round(fs * 0.62);
+
+    if(!tokens || !tokens.length){
+      canvas.width=520; canvas.height=120;
+      ctx.clearRect(0,0,520,120);
+      if(!opts.transparent){ ctx.fillStyle=opts.bgColor; ctx.fillRect(0,0,520,120); }
+      ctx.fillStyle='#999'; ctx.font=`13px 'Segoe UI',sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('Type a reaction in the sidebar to see the preview here.',260,60);
+      return;
+    }
+
+    const pad     = fs * 1.0;
+    const spacing = fs * 0.5;   // gap between tokens
+
+    // Measure total width (first pass, no drawing)
+    let totalW = pad * 2;
+    tokens.forEach((t, i)=>{
+      totalW += measureToken(t, fs, subFs);
+      if(i < tokens.length - 1) totalW += spacing;
+    });
+
+    const totalH = fs * 4.0;
+    canvas.width  = Math.max(300, Math.ceil(totalW));
+    canvas.height = Math.max(100, Math.ceil(totalH));
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(!opts.transparent){ ctx.fillStyle=opts.bgColor; ctx.fillRect(0,0,canvas.width,canvas.height); }
+
+    // cy is the vertical midpoint of the symbol glyph
+    const cy = canvas.height / 2;
+    let x = pad;
+
+    tokens.forEach((t, i)=>{
+      x += drawToken(t, x, cy, fs, subFs, opts);
+      if(i < tokens.length - 1) x += spacing;
+    });
+  }
+
+  // ── MEASURE ──
+  function measureToken(t, fs, subFs){
+    if(t.type === 'plus'){
+      ctx.font = `${fs}px 'Segoe UI',sans-serif`;
+      return ctx.measureText('+').width + fs * 0.4;
+    }
+    if(t.type === 'arrow'){
+      return fs * 2.2;
+    }
+    if(t.type === 'unknown' || t.type === 'unknown_token'){
+      // Two small stacked boxes + one tall symbol box
+      const lw = Math.max(1.5, fs * 0.045);
+      return fs * 0.75 + lw * 2 + fs * 1.1 + lw;
+    }
+    // isotope
+    ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
+    const massW   = ctx.measureText(String(t.A ?? '')).width;
+    const numW    = ctx.measureText(String(t.Z ?? '')).width;
+    const prefixW = Math.max(massW, numW) + 4;
+    ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
+    const symW = ctx.measureText(t.sym).width;
+    let chargeW = 0;
+    if(t.charge != null){
+      const cs = t.charge > 0 ? `+${t.charge}` : String(t.charge);
+      ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
+      chargeW = ctx.measureText(cs).width + 2;
+    }
+    return prefixW + symW + 4 + chargeW;
+  }
+
+  // ── DRAW — returns width used ──
+  function drawToken(t, x, cy, fs, subFs, opts){
+    if(t.type === 'plus'){
+      ctx.font = `${fs}px 'Segoe UI',sans-serif`;
+      ctx.fillStyle = opts.textColor; ctx.textAlign='center'; ctx.textBaseline='middle';
+      const w = ctx.measureText('+').width + fs * 0.4;
+      ctx.fillText('+', x + w/2, cy + fs * 0.2);
+      return w;
+    }
+
+    if(t.type === 'arrow'){
+      const aw = fs * 2.2;
+      const ay = cy + fs * 0.2;
+      const x1 = x + fs * 0.2, x2 = x + aw - fs * 0.15;
+      ctx.strokeStyle = opts.textColor; ctx.lineWidth = Math.max(1.5, fs * 0.05);
+      ctx.beginPath(); ctx.moveTo(x1, ay); ctx.lineTo(x2, ay); ctx.stroke();
+      const ah = fs * 0.22;
+      ctx.beginPath(); ctx.moveTo(x2, ay); ctx.lineTo(x2-ah, ay-ah*0.55); ctx.lineTo(x2-ah, ay+ah*0.55); ctx.closePath();
+      ctx.fillStyle = opts.textColor; ctx.fill();
+      return aw;
+    }
+
+    if(t.type === 'unknown' || t.type === 'unknown_token'){
+      return drawUnknownBoxes(x, cy, fs, opts);
+    }
+
+    return drawIsotope(t, x, cy, fs, subFs, opts);
+  }
+
+  function drawIsotope(t, x, cy, fs, subFs, opts){
+    const sym     = t.sym;
+    const massStr = String(t.A ?? '');
+    const numStr  = String(t.Z ?? '');
+
+    // Measure prefix column
+    ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
+    const massW   = ctx.measureText(massStr).width;
+    const numW    = ctx.measureText(numStr).width;
+    // Right-align both numbers to the same x edge
+    const prefixW = Math.max(massW, numW) + 4;
+
+    ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
+    const symW = ctx.measureText(sym).width;
+
+    const chargeStr = t.charge != null ? (t.charge > 0 ? `+${t.charge}` : String(t.charge)) : '';
+    ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
+    const chargeW = chargeStr ? ctx.measureText(chargeStr).width + 2 : 0;
+
+    const totalW = prefixW + symW + 4 + chargeW;
+
+    // ── Mass number — top-left, right-aligned to prefixW edge ──
+    ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
+    ctx.fillStyle = opts.textColor;
+    ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(massStr, x + prefixW, cy - fs * 0.08);
+
+    // ── Atomic number — bottom-left, right-aligned to same prefixW edge ──
+    ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(numStr, x + prefixW, cy + fs * 0.56);
+
+    // ── Symbol — centered on the full vertical span of both numbers ──
+    // Mass top ≈ cy - fs*0.08 - subFs*0.8, atomic number bottom ≈ cy + fs*0.56
+    // Midpoint of that span:
+    const spanTop    = cy - fs * 0.08 - subFs * 0.8;
+    const spanBottom = cy + fs * 0.56;
+    const symCY      = (spanTop + spanBottom) / 2;
+    ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(sym, x + prefixW + 2, symCY);
+
+    // ── Charge — top-right of symbol, at mass number height ──
+    if(chargeStr){
+      ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.fillText(chargeStr, x + prefixW + symW + 4, cy - fs * 0.08);
+    }
+
+    return totalW;
+  }
+
+  // Two small stacked boxes (mass top, Z bottom) + one tall box for the symbol — matches reference image
+  function drawUnknownBoxes(x, cy, fs, opts){
+    const lw   = Math.max(1.5, fs * 0.045);
+    const bw   = fs * 0.75;   // width of each small box
+    const bh   = fs * 0.56;   // height of each small box
+    const gap  = fs * 0.18;   // padding gap between top and bottom small box
+    const sbW  = fs * 1.1;    // symbol box width
+    const sbH  = bh * 2 + gap; // symbol box height = total height of the two stacked boxes
+
+    ctx.strokeStyle = opts.textColor; ctx.lineWidth = lw;
+
+    // Top small box (mass number position)
+    ctx.strokeRect(x, cy - bh - gap * 0.5, bw, bh);
+    // Bottom small box (atomic number position)
+    ctx.strokeRect(x, cy + gap * 0.5,      bw, bh);
+
+    // Tall symbol box to the right
+    const symX = x + bw + lw * 2;
+    ctx.strokeRect(symX, cy - sbH * 0.5, sbW, sbH);
+
+    return bw + lw * 2 + sbW + lw;
+  }
+
+  // ── EXPORT / COPY ──
+  function exportPNG(){
+    const link = document.createElement('a');
+    link.download = 'isotope-notation.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  // ── BIND ──
+  function bindControls(){
+    document.getElementById('rxn-input').addEventListener('input', onInput);
+    document.getElementById('font-range').oninput  = function(){ document.getElementById('font-num').value=this.value; draw(lastTokens); };
+    document.getElementById('font-num').onchange   = function(){ document.getElementById('font-range').value=this.value; draw(lastTokens); };
+    document.getElementById('bg-color').onchange   = ()=>draw(lastTokens);
+    document.getElementById('text-color').onchange = ()=>draw(lastTokens);
+    document.getElementById('opt-transparent').onchange = ()=>draw(lastTokens);
+  }
+
+  function init(){
+    buildRefTable();
+    bindControls();
+    draw([]);
+  }
+
+  return { init, copyUnicode, exportPNG };
+})();
+
+function showAlert(msg){
+  document.querySelectorAll('.styled-alert').forEach(e=>e.remove());
+  const el=document.createElement('div'); el.className='styled-alert'; el.textContent=msg;
+  document.body.appendChild(el); setTimeout(()=>el.remove(),2400);
+}
+
+window.addEventListener('load',()=>IN.init());
+</script>
+</body>
+</html>
