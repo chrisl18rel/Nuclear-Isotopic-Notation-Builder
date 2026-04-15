@@ -137,7 +137,7 @@
       <p>Type a reaction in plain text — renders instantly as isotope notation</p>
     </div>
   </div>
-  <div class="app-version">v2.3</div>
+  <div class="app-version">v2.4</div>
 </header>
 
 <div class="app-body">
@@ -325,8 +325,18 @@ function tokenize(raw){
 
   // Normalize arrow variants before splitting
   let s = raw
-    .replace(/→|--?>|yields/gi, ' ARROW ')
-    .replace(/\+/g, ' PLUS ');
+    .replace(/→|--?>|yields/gi, ' ARROW ');
+
+  // Replace + signs that are NOT inside charge parentheses e.g. (+2) or (-1)
+  // Strategy: temporarily hide charge groups, swap +, then restore
+  const chargeTokens = [];
+  s = s.replace(/\([+-]\d+\)/g, (match) => {
+    chargeTokens.push(match);
+    return `__CHARGE${chargeTokens.length - 1}__`;
+  });
+  s = s.replace(/\+/g, ' PLUS ');
+  // Restore charge groups
+  s = s.replace(/__CHARGE(\d+)__/g, (_, i) => chargeTokens[parseInt(i)]);
 
   const words = s.trim().split(/\s+/).filter(Boolean);
   const tokens = [];
