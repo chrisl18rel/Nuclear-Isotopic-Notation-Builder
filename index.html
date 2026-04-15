@@ -534,13 +534,13 @@ const IN = (() => {
       ctx.font = `${fs}px 'Segoe UI',sans-serif`;
       ctx.fillStyle = opts.textColor; ctx.textAlign='center'; ctx.textBaseline='middle';
       const w = ctx.measureText('+').width + fs * 0.4;
-      ctx.fillText('+', x + w/2, cy + fs * 0.2);
+      ctx.fillText('+', x + w/2, cy);
       return w;
     }
 
     if(t.type === 'arrow'){
       const aw = fs * 2.2;
-      const ay = cy + fs * 0.2;
+      const ay = cy;
       const x1 = x + fs * 0.2, x2 = x + aw - fs * 0.15;
       ctx.strokeStyle = opts.textColor; ctx.lineWidth = Math.max(1.5, fs * 0.05);
       ctx.beginPath(); ctx.moveTo(x1, ay); ctx.lineTo(x2, ay); ctx.stroke();
