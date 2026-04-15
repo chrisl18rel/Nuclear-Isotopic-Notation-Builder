@@ -107,7 +107,8 @@
     .preview-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
     .preview-label { padding: 8px 14px; font-size: 11px; color: var(--text-dim); background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
     .canvas-scroll-wrapper { flex: 1; overflow: auto; padding: 24px; display: flex; align-items: center; justify-content: center; }
-    .canvas-scroll-wrapper.transparent-bg {
+    #notation-canvas { display: block; border-radius: 4px; box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
+    #notation-canvas.transparent-bg {
       background-image: linear-gradient(45deg, #aaa 25%, transparent 25%),
                         linear-gradient(-45deg, #aaa 25%, transparent 25%),
                         linear-gradient(45deg, transparent 75%, #aaa 75%),
@@ -116,7 +117,6 @@
       background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
       background-color: #ffffff;
     }
-    #notation-canvas { display: block; border-radius: 4px; box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
 
     .styled-alert {
       position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
@@ -137,7 +137,7 @@
       <p>Type a reaction in plain text — renders instantly as isotope notation</p>
     </div>
   </div>
-  <div class="app-version">v2.2</div>
+  <div class="app-version">v2.3</div>
 </header>
 
 <div class="app-body">
@@ -659,8 +659,8 @@ const IN = (() => {
     document.getElementById('bg-color').onchange   = ()=>draw(lastTokens);
     document.getElementById('text-color').onchange = ()=>draw(lastTokens);
     document.getElementById('opt-transparent').onchange = ()=>{
-      const wrapper = document.querySelector('.canvas-scroll-wrapper');
-      wrapper.classList.toggle('transparent-bg', document.getElementById('opt-transparent').checked);
+      const cv = document.getElementById('notation-canvas');
+      cv.classList.toggle('transparent-bg', document.getElementById('opt-transparent').checked);
       draw(lastTokens);
     };
   }
