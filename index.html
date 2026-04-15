@@ -146,7 +146,7 @@
       <p>Type a reaction in plain text — renders instantly as isotope notation</p>
     </div>
   </div>
-  <div class="app-version">v2.7</div>
+  <div class="app-version">v2.8</div>
 </header>
 
 <div class="app-body">
@@ -406,7 +406,7 @@ function parseWord(word){
 
   const particle = PARTICLES.find(p => p.keywords.includes(wl));
   if(particle)
-    return { type:'isotope', sym:particle.sym, A:particle.A, Z:particle.Z, charge:null, label:particle.label };
+    return { type:'isotope', sym:particle.sym, A:particle.A, Z:particle.Z, charge:null, label:particle.label, isElectron:!!particle.isElectron };
 
   // Name-Mass(charge)
   let m = word.match(/^([a-zA-Z]+)-(\d+)\(([+-]\d+)\)$/);
