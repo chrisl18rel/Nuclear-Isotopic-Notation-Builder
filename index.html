@@ -196,7 +196,7 @@
       <p>Type a reaction in plain text — renders instantly as isotope notation</p>
     </div>
   </div>
-  <div class="app-version">v3.1</div>
+  <div class="app-version">v3.2</div>
 </header>
 
 <div class="app-body">
@@ -850,7 +850,7 @@ const IN = (() => {
         ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
         extra += ctx.measureText(String(t.coeff)).width + fs * 0.1;
       }
-      if(t.blankCoeff) extra += fs * 0.7 + fs * 0.15;
+      if(t.blankCoeff) extra += fs * 0.95 + fs * 0.15;
       return extra + fs * 0.75 + lw * 2 + fs * 1.1 + lw;
     }
     // coefficient prefix width
@@ -1017,8 +1017,9 @@ const IN = (() => {
 
     // ── Blank coefficient line (e.g. "_ unknown") ──
     if(blankCoeff){
-      const lineW = fs * 0.7;
-      const lineY = cy + fs * 0.2;
+      const lineW = fs * 0.95;
+      // Bottom of lower box = cy + gap*0.5 + bh
+      const lineY = cy + gap * 0.5 + bh;
       ctx.strokeStyle = opts.textColor; ctx.lineWidth = lw * 1.2;
       ctx.beginPath(); ctx.moveTo(ox, lineY); ctx.lineTo(ox + lineW, lineY); ctx.stroke();
       ox += lineW + fs * 0.15;
