@@ -146,7 +146,7 @@
       <p>Type a reaction in plain text — renders instantly as isotope notation</p>
     </div>
   </div>
-  <div class="app-version">v2.8</div>
+  <div class="app-version">v2.9</div>
 </header>
 
 <div class="app-body">
@@ -369,6 +369,19 @@ function tokenize(raw){
     if(word === 'PLUS') { tokens.push({type:'plus'});  continue; }
 
     const wl = word.toLowerCase();
+
+    // Fused coefficient+particle e.g. "2e", "2e-", "3beta", "2alpha"
+    const fusedMatch = word.match(/^(\d+)([a-zA-Zα-ωβγ].*)$/);
+    if(fusedMatch){
+      const coeff  = parseInt(fusedMatch[1]);
+      const rest   = fusedMatch[2];
+      const parsed = parseWord(rest);
+      if(parsed){
+        parsed.coeff = coeff;
+        tokens.push(parsed);
+        continue;
+      }
+    }
 
     // Pure integer — treat as coefficient for the next word
     if(/^\d+$/.test(word)){
@@ -598,9 +611,10 @@ const IN = (() => {
     if(t.isElectron && opts.electronStyle === 'symbol'){
       ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
       const eW = ctx.measureText('e').width;
-      ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
-      const supW = ctx.measureText('⁻').width;
-      return coeffW + eW + supW + 2;
+      const signFs = Math.round(fs * 0.75);
+      ctx.font = `bold ${signFs}px 'Segoe UI',sans-serif`;
+      const signW = ctx.measureText('-').width;
+      return coeffW + eW + signW + 3;
     }
     // isotope
     ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
@@ -661,17 +675,21 @@ const IN = (() => {
 
     // ── Electron symbol style (e⁻ / e⁺) ──
     if(t.isElectron && opts.electronStyle === 'symbol'){
-      const symStr  = t.Z < 0 ? 'e' : 'e';
-      const supStr  = t.Z < 0 ? '⁻' : '⁺';
+      const symStr = 'e';
+      const supStr = t.Z < 0 ? '-' : '+';
+      // Draw the 'e' at full size, vertically centered
       ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
       const eW = ctx.measureText(symStr).width;
       ctx.fillStyle = opts.textColor; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       ctx.fillText(symStr, ox, cy + fs * 0.2);
-      ctx.font = `bold ${subFs}px 'Segoe UI',sans-serif`;
+      // Draw the sign at ~75% size, sitting just above the top of the 'e'
+      const signFs = Math.round(fs * 0.75);
+      ctx.font = `bold ${signFs}px 'Segoe UI',sans-serif`;
+      const signW = ctx.measureText(supStr).width;
       ctx.textBaseline = 'alphabetic';
-      ctx.fillText(supStr, ox + eW + 1, cy - fs * 0.08);
-      ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
-      const totalW = coeffW + eW + ctx.measureText(supStr).width + 2;
+      // top of 'e' glyph is roughly cy + fs*0.2 - fs*0.5 = cy - fs*0.3
+      ctx.fillText(supStr, ox + eW + 1, cy - fs * 0.15);
+      const totalW = coeffW + eW + signW + 3;
       return totalW;
     }
 
