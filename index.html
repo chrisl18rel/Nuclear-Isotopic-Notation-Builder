@@ -146,7 +146,7 @@
       <p>Type a reaction in plain text — renders instantly as isotope notation</p>
     </div>
   </div>
-  <div class="app-version">v2.9</div>
+  <div class="app-version">v3.0</div>
 </header>
 
 <div class="app-body">
@@ -159,7 +159,9 @@
       <textarea id="rxn-input" placeholder="e.g.  Radon-226 -> Radium-222 + alpha&#10;e.g.  U-238 -> Th-234 + alpha&#10;e.g.  C-14 -> N-14 + beta + unknown&#10;e.g.  Ca-40(+2) -> Ca-40 + unknown&#10;e.g.  Ca-40(+2) -> Ca-40 + 2 beta" style="min-height:118px;"></textarea>
       <div class="mini-note">
         Use <b>→</b> or <b>-&gt;</b> or <b>yields</b> as the arrow.<br>
-        Separate particles with <b>+</b>. Type <b>unknown</b> for a boxed unknown particle.
+        Separate particles with <b>+</b>. Type <b>unknown</b> for a boxed unknown particle.<br>
+        Type <b>_ unknown</b> for an unknown with a blank coefficient box.<br>
+        Type <b>2 unknown</b> for an unknown with a numeric coefficient.
       </div>
       <div class="token-preview" id="token-preview"></div>
       <button class="action-btn danger" onclick="IN.clearAll()" style="margin-top:8px;">✕ Clear</button>
@@ -370,6 +372,28 @@ function tokenize(raw){
 
     const wl = word.toLowerCase();
 
+    // Blank coefficient before unknown: "_ unknown", "blank unknown", "_unknown", "?unknown"
+    if(['_unknown','?unknown','blankunk','blank_unknown'].includes(wl)){
+      tokens.push({type:'unknown', blankCoeff:true}); continue;
+    }
+    if(['_','blank'].includes(wl)){
+      const next = words[i+1];
+      if(next && ['unknown','?','unk','??'].includes(next.toLowerCase())){
+        i++;
+        tokens.push({type:'unknown', blankCoeff:true}); continue;
+      }
+    }
+
+    // Numeric coefficient before unknown: "2 unknown", "3 ?"
+    if(/^\d+$/.test(word)){
+      const coeff = parseInt(word);
+      const next  = words[i+1];
+      if(next && ['unknown','?','unk','??'].includes(next.toLowerCase())){
+        i++;
+        tokens.push({type:'unknown', coeff}); continue;
+      }
+    }
+
     // Fused coefficient+particle e.g. "2e", "2e-", "3beta", "2alpha"
     const fusedMatch = word.match(/^(\d+)([a-zA-Zα-ωβγ].*)$/);
     if(fusedMatch){
@@ -451,7 +475,11 @@ function tokensToUnicode(tokens, electronStyle){
   return tokens.map(t=>{
     if(t.type==='arrow')         return ' → ';
     if(t.type==='plus')          return ' + ';
-    if(t.type==='unknown')       return '[?]';
+    if(t.type==='unknown'){
+      if(t.blankCoeff) return '□[?]';
+      if(t.coeff && t.coeff > 1) return String(t.coeff) + '[?]';
+      return '[?]';
+    }
     if(t.type==='unknown_token') return t.raw;
     return isoUnicode(t, electronStyle);
   }).join('').trim();
@@ -517,7 +545,7 @@ const IN = (() => {
       const c = document.createElement('span');
       if(t.type==='arrow')         { c.className='token-chip op'; c.textContent='→'; }
       else if(t.type==='plus')     { c.className='token-chip op'; c.textContent='+'; }
-      else if(t.type==='unknown')  { c.className='token-chip ok'; c.textContent='?'; }
+      else if(t.type==='unknown')  { c.className='token-chip ok'; c.textContent = t.blankCoeff ? '□+?' : (t.coeff ? t.coeff+'×?' : '?'); }
       else if(t.type==='unknown_token'){ c.className='token-chip warn'; c.textContent=`"${t.raw}"?`; }
       else { c.className='token-chip ok'; c.textContent=`${t.sym}-${t.A}`+(t.charge!=null?`(${t.charge>0?'+':''}${t.charge})`:''); }
       wrap.appendChild(c);
@@ -597,8 +625,14 @@ const IN = (() => {
     }
     if(t.type === 'arrow') return fs * 2.2;
     if(t.type === 'unknown' || t.type === 'unknown_token'){
-      const lw = Math.max(1.5, fs * 0.045);
-      return fs * 0.75 + lw * 2 + fs * 1.1 + lw;
+      const lw  = Math.max(1.5, fs * 0.045);
+      let extra = 0;
+      if(t.coeff && t.coeff > 1){
+        ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
+        extra += ctx.measureText(String(t.coeff)).width + fs * 0.1;
+      }
+      if(t.blankCoeff) extra += fs * 0.7 + fs * 0.15;
+      return extra + fs * 0.75 + lw * 2 + fs * 1.1 + lw;
     }
     // coefficient prefix width
     let coeffW = 0;
@@ -655,7 +689,7 @@ const IN = (() => {
     }
 
     if(t.type === 'unknown' || t.type === 'unknown_token'){
-      return drawUnknownBoxes(x, cy, fs, opts);
+      return drawUnknownBoxes(x, cy, fs, opts, t.coeff, t.blankCoeff);
     }
 
     return drawIsotope(t, x, cy, fs, subFs, opts);
@@ -740,27 +774,49 @@ const IN = (() => {
     return totalW;
   }
 
-  // Two small stacked boxes (mass top, Z bottom) + one tall box for the symbol — matches reference image
-  function drawUnknownBoxes(x, cy, fs, opts){
-    const lw   = Math.max(1.5, fs * 0.045);
-    const bw   = fs * 0.75;   // width of each small box
-    const bh   = fs * 0.56;   // height of each small box
-    const gap  = fs * 0.18;   // padding gap between top and bottom small box
-    const sbW  = fs * 1.1;    // symbol box width
-    const sbH  = bh * 2 + gap; // symbol box height = total height of the two stacked boxes
+  // Two small stacked boxes (mass top, Z bottom) + one tall box for the symbol
+  // coeff: optional number to draw in front; blankCoeff: draw an empty box in front
+  function drawUnknownBoxes(x, cy, fs, opts, coeff, blankCoeff){
+    const lw  = Math.max(1.5, fs * 0.045);
+    const bw  = fs * 0.75;
+    const bh  = fs * 0.56;
+    const gap = fs * 0.18;
+    const sbW = fs * 1.1;
+    const sbH = bh * 2 + gap;
+
+    let ox = x; // offset x as we draw left to right
+
+    // ── Numeric coefficient (e.g. "2 unknown") ──
+    if(coeff && coeff > 1){
+      ctx.font = `bold ${fs}px 'Segoe UI',sans-serif`;
+      ctx.fillStyle = opts.textColor; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const coeffStr = String(coeff);
+      const coeffW   = ctx.measureText(coeffStr).width + fs * 0.1;
+      ctx.fillText(coeffStr, ox, cy + fs * 0.2);
+      ox += coeffW;
+    }
+
+    // ── Blank coefficient line (e.g. "_ unknown") ──
+    if(blankCoeff){
+      const lineW = fs * 0.7;
+      const lineY = cy + fs * 0.2;
+      ctx.strokeStyle = opts.textColor; ctx.lineWidth = lw * 1.2;
+      ctx.beginPath(); ctx.moveTo(ox, lineY); ctx.lineTo(ox + lineW, lineY); ctx.stroke();
+      ox += lineW + fs * 0.15;
+    }
 
     ctx.strokeStyle = opts.textColor; ctx.lineWidth = lw;
 
     // Top small box (mass number position)
-    ctx.strokeRect(x, cy - bh - gap * 0.5, bw, bh);
+    ctx.strokeRect(ox, cy - bh - gap * 0.5, bw, bh);
     // Bottom small box (atomic number position)
-    ctx.strokeRect(x, cy + gap * 0.5,      bw, bh);
+    ctx.strokeRect(ox, cy + gap * 0.5,      bw, bh);
 
     // Tall symbol box to the right
-    const symX = x + bw + lw * 2;
+    const symX = ox + bw + lw * 2;
     ctx.strokeRect(symX, cy - sbH * 0.5, sbW, sbH);
 
-    return bw + lw * 2 + sbW + lw;
+    return (ox - x) + bw + lw * 2 + sbW + lw;
   }
 
   // ── EXPORT / COPY ──
